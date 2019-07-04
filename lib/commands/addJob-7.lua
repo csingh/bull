@@ -21,6 +21,7 @@
       KEYS[4] 'id'
       KEYS[5] 'delayed'
       KEYS[6] 'priority'
+      KEYS[7] 'throttles'
 
       ARGV[1]  key prefix,
       ARGV[2]  custom id (will not generate one automatically)
@@ -33,6 +34,7 @@
       ARGV[9]  priority
       ARGV[10] LIFO
       ARGV[11] token
+      ARGV[12] throttle_id
 ]]
 local jobId
 local jobIdKey
@@ -52,7 +54,7 @@ else
 end
 
 -- Store the job.
-rcall("HMSET", jobIdKey, "name", ARGV[3], "data", ARGV[4], "opts", ARGV[5], "timestamp", ARGV[6], "delay", ARGV[7], "priority", ARGV[9])
+rcall("HMSET", jobIdKey, "name", ARGV[3], "data", ARGV[4], "opts", ARGV[5], "timestamp", ARGV[6], "delay", ARGV[7], "priority", ARGV[9], "throttle_id", ARGV[12])
 
 -- Check if job is delayed
 local delayedTimestamp = tonumber(ARGV[8])
