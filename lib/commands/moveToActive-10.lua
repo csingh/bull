@@ -20,6 +20,10 @@
       --
       KEYS[8] drained key
 
+      --
+      KEYS[9] throttles key
+      KEYS[10] throttle counts key
+
       ARGV[1] key prefix
       ARGV[2] lock token
       ARGV[3] lock duration in milliseconds
@@ -42,16 +46,44 @@ if(ARGV[5] ~= "") then
 else
   -- move from wait to active
   jobId = rcall("RPOPLPUSH", KEYS[1], KEYS[2])
+
+  -- keep popping elements from wait and see if the throttle is < throttle_max
+  -- if it is, then move to active, and break
+  -- if not, then move to delayed
+
+  -- while true do
+  --   local jobId = rcall("RPOP", KEYS[1])
+  --   if not jobId then break end
+
+  --   local throttle_id = rcall("HGET", jobId, "throttle_id")
+  --   local throttle_max = rcall("HGET", KEYS[9], throttle_id)
+
+  --   -- TODO: implement throttle_current_counts
+  --   local throttle_current = rcall("HGET", <throttle-current_counts>, throttle_id)
+  --   if throttle_current < throttle_max then
+  --     -- push to active, then break
+  --     rcall("LPUSH", KEYS[2], jobId)
+  --     break
+  --   else
+  --     -- push to delayed, and continue looping
+  --     rcall("LPUSH", KEYS[7], jobId)      
+  --   end
+  -- end
+
 end
 
 if jobId then
+  local jobKey = ARGV[1] .. jobId
   -- Check if we need to perform rate limiting.
+  local throttle_id = rcall("HGET", jobKey, "throttle_id")
   local maxJobs = tonumber(ARGV[6])
+  -- local maxJobsNew = tonumber(rcall("HGET", KEYS[9], throttle_id))
 
   if(maxJobs) then
     local rateLimiterKey = KEYS[6];
     local jobCounter = tonumber(rcall("GET", rateLimiterKey))
     local bounceBack = ARGV[8]
+    -- local jobCounterNew = tonumber(rcall("HGET", KEYS[10], throttle_id))
     
     -- rate limit hit
     if jobCounter ~= nil and jobCounter >= maxJobs then
@@ -68,6 +100,7 @@ if jobId then
       return
     else
       jobCounter = rcall("INCR", rateLimiterKey)
+      rcall("HINCRBY", KEYS[10], throttle_id, 1)
       if tonumber(jobCounter) == 1 then
         rcall("PEXPIRE", rateLimiterKey, ARGV[7])
       end
