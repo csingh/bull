@@ -76,33 +76,27 @@ if jobId then
   local jobKey = ARGV[1] .. jobId
   -- Check if we need to perform rate limiting.
   local throttle_id = rcall("HGET", jobKey, "throttle_id")
-  local maxJobs = tonumber(ARGV[6])
-  -- local maxJobsNew = tonumber(rcall("HGET", KEYS[9], throttle_id))
+  local throttleCountKey = throttle_id .. ":count"
+  local maxJobs = tonumber(rcall("HGET", KEYS[9], throttle_id))
 
   if(maxJobs) then
-    local rateLimiterKey = KEYS[6];
-    local jobCounter = tonumber(rcall("GET", rateLimiterKey))
-    local bounceBack = ARGV[8]
-    -- local jobCounterNew = tonumber(rcall("HGET", KEYS[10], throttle_id))
+    local jobCounter = tonumber(rcall("GET", throttleCountKey))
     
     -- rate limit hit
     if jobCounter ~= nil and jobCounter >= maxJobs then
-      local delay = tonumber(rcall("PTTL", rateLimiterKey))
+      local delay = tonumber(rcall("PTTL", throttleCountKey))
       local timestamp = delay + tonumber(ARGV[4])
 
-      if bounceBack == 'false' then
-        -- put job into delayed queue
-        rcall("ZADD", KEYS[7], timestamp * 0x1000 + bit.band(jobCounter, 0xfff), jobId)
-        rcall("PUBLISH", KEYS[7], timestamp)
-      end
+      -- put job into delayed queue
+      rcall("ZADD", KEYS[7], timestamp * 0x1000 + bit.band(jobCounter, 0xfff), jobId)
+      rcall("PUBLISH", KEYS[7], timestamp)
       -- remove from active queue
       rcall("LREM", KEYS[2], 1, jobId)
       return
     else
-      jobCounter = rcall("INCR", rateLimiterKey)
-      rcall("HINCRBY", KEYS[10], throttle_id, 1)
+      jobCounter = rcall("INCR", throttleCountKey)
       if tonumber(jobCounter) == 1 then
-        rcall("PEXPIRE", rateLimiterKey, ARGV[7])
+        rcall("PEXPIRE", throttleCountKey, 10000)
       end
     end
   end
