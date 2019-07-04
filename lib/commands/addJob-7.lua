@@ -53,8 +53,15 @@ else
   end
 end
 
+local throttles_key = KEYS[7]
+local throttle_id = ARGV[12]
+local throttle_default = 111
+
 -- Store the job.
-rcall("HMSET", jobIdKey, "name", ARGV[3], "data", ARGV[4], "opts", ARGV[5], "timestamp", ARGV[6], "delay", ARGV[7], "priority", ARGV[9], "throttle_id", ARGV[12])
+rcall("HMSET", jobIdKey, "name", ARGV[3], "data", ARGV[4], "opts", ARGV[5], "timestamp", ARGV[6], "delay", ARGV[7], "priority", ARGV[9], "throttle_id", throttle_id)
+
+-- Add the throttle_id to the throttles hash if it doesn't exist
+rcall("HSETNX", throttles_key, throttle_id, throttle_default)
 
 -- Check if job is delayed
 local delayedTimestamp = tonumber(ARGV[8])
