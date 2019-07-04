@@ -18,7 +18,6 @@
   ],
   "author": "OptimalBits",
   "license": "MIT",
-  "readmeFilename": "README.md",
   "dependencies": {
     "cron-parser": "^2.7.3",
     "debuglog": "^1.0.0",
@@ -73,5 +72,15 @@
     "hooks": {
       "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
     }
+  },
+  "bugs": {
+    "url": "https://github.com/OptimalBits/bull/issues"
+  },
+  "homepage": "https://github.com/OptimalBits/bull#readme",
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "lib": "lib",
+    "test": "test"
   }
 }
