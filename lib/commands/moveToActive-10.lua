@@ -74,29 +74,44 @@ end
 
 if jobId then
   local jobKey = ARGV[1] .. jobId
-  -- Check if we need to perform rate limiting.
   local throttle_id = rcall("HGET", jobKey, "throttle_id")
-  local throttleCountKey = throttle_id .. ":count"
-  local maxJobs = tonumber(rcall("HGET", KEYS[9], throttle_id))
-
-  if(maxJobs) then
-    local jobCounter = tonumber(rcall("GET", throttleCountKey))
+  local rateLimiterKey
+  local maxJobs
+  -- local throttleCountKey = throttle_id .. ":count"
+  
+  -- Check if we need to use throttling
+  if throttle_id then
+    rateLimiterKey = throttle_id .. ":count"
+    maxJobs = tonumber(rcall("HGET", KEYS[9], throttle_id))
+  else
+    rateLimiterKey = KEYS[6]
+    maxJobs = tonumber(ARGV[6])
+  end
+  
+  -- Check if we need to perform rate limiting.
+  if maxJobs then
+    local jobCounter = rcall("INCR", rateLimiterKey)
+    local bounceBack = ARGV[8]
     
+    -- throttle rate limit hit
     -- rate limit hit
-    if jobCounter ~= nil and jobCounter >= maxJobs then
-      local delay = tonumber(rcall("PTTL", throttleCountKey))
-      local timestamp = delay + tonumber(ARGV[4])
+    if jobCounter > maxJobs then
+      if bounceBack == 'false' then
+        local exceedingJobs = jobCounter - maxJobs
+        local delay = tonumber(rcall("PTTL", rateLimiterKey)) + ((exceedingJobs - 1) * ARGV[7]) / maxJobs
+        local timestamp = delay + tonumber(ARGV[4])
 
-      -- put job into delayed queue
-      rcall("ZADD", KEYS[7], timestamp * 0x1000 + bit.band(jobCounter, 0xfff), jobId)
-      rcall("PUBLISH", KEYS[7], timestamp)
+        -- put job into delayed queue
+        rcall("ZADD", KEYS[7], timestamp * 0x1000 + bit.band(jobCounter, 0xfff), jobId)
+        rcall("PUBLISH", KEYS[7], timestamp)
+      end
       -- remove from active queue
       rcall("LREM", KEYS[2], 1, jobId)
       return
     else
-      jobCounter = rcall("INCR", throttleCountKey)
       if tonumber(jobCounter) == 1 then
-        rcall("PEXPIRE", throttleCountKey, 10000)
+        rcall("PEXPIRE", rateLimiterKey, 10000)
+        -- rcall("PEXPIRE", rateLimiterKey, ARGV[7])
       end
     end
   end
