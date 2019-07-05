@@ -46,30 +46,6 @@ if(ARGV[5] ~= "") then
 else
   -- move from wait to active
   jobId = rcall("RPOPLPUSH", KEYS[1], KEYS[2])
-
-  -- keep popping elements from wait and see if the throttle is < throttle_max
-  -- if it is, then move to active, and break
-  -- if not, then move to delayed
-
-  -- while true do
-  --   local jobId = rcall("RPOP", KEYS[1])
-  --   if not jobId then break end
-
-  --   local throttle_id = rcall("HGET", jobId, "throttle_id")
-  --   local throttle_max = rcall("HGET", KEYS[9], throttle_id)
-
-  --   -- TODO: implement throttle_current_counts
-  --   local throttle_current = rcall("HGET", <throttle-current_counts>, throttle_id)
-  --   if throttle_current < throttle_max then
-  --     -- push to active, then break
-  --     rcall("LPUSH", KEYS[2], jobId)
-  --     break
-  --   else
-  --     -- push to delayed, and continue looping
-  --     rcall("LPUSH", KEYS[7], jobId)      
-  --   end
-  -- end
-
 end
 
 if jobId then
@@ -77,10 +53,9 @@ if jobId then
   local throttle_id = rcall("HGET", jobKey, "throttle_id")
   local rateLimiterKey
   local maxJobs
-  -- local throttleCountKey = throttle_id .. ":count"
-  
+
   -- Check if we need to use throttling
-  if throttle_id then
+  if (throttle_id ~= "") then
     rateLimiterKey = throttle_id .. ":count"
     maxJobs = tonumber(rcall("HGET", KEYS[9], throttle_id))
   else
@@ -110,8 +85,7 @@ if jobId then
       return
     else
       if tonumber(jobCounter) == 1 then
-        rcall("PEXPIRE", rateLimiterKey, 10000)
-        -- rcall("PEXPIRE", rateLimiterKey, ARGV[7])
+        rcall("PEXPIRE", rateLimiterKey, ARGV[7])
       end
     end
   end
