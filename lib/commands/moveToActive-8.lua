@@ -20,6 +20,9 @@
       --
       KEYS[8] drained key
 
+      -- Changed: ThrottleID 
+      KEYS[9] throttleID
+
       ARGV[1] key prefix
       ARGV[2] lock token
       ARGV[3] lock duration in milliseconds
@@ -46,20 +49,24 @@ end
 
 if jobId then
   -- Check if we need to perform rate limiting.
-  local maxJobs = tonumber(ARGV[6])
+  -- local maxJobs = tonumber(ARGV[6])
+  -- local maxJobs = tonumber(rcall("GET"), KEYS[9])
 
   if(maxJobs) then
     local rateLimiterKey = KEYS[6];
-    -- local jobCounter = tonumber(rcall("GET", rateLimiterKey))
-    local jobCounter = tonumber(rcall("INCR", rateLimiterKey))
+    -- -- local jobCounter = tonumber(rcall("GET", rateLimiterKey))
+
+
+    -- local jobCounter = tonumber(rcall("INCR", KEYS[9] .. "_throttle"))
     local bounceBack = ARGV[8]
     
     -- check if rate limit hit
     if jobCounter > maxJobs then
       if bounceBack == 'false' then
-        local exceedingJobs = jobCounter - maxJobs
-        local delay = tonumber(rcall("PTTL", rateLimiterKey)) + ((exceedingJobs - 1) * ARGV[7]) / maxJobs
-        local timestamp = delay + tonumber(ARGV[4])
+
+        -- local exceedingJobs = jobCounter - maxJobs
+        -- local delay = tonumber(rcall("PTTL", rateLimiterKey)) + ((exceedingJobs - 1) * ARGV[7]) / maxJobs
+        -- local timestamp = delay + tonumber(ARGV[4])
         
         -- put job into delayed queue
         rcall("ZADD", KEYS[7], timestamp * 0x1000 + bit.band(jobCounter, 0xfff), jobId)
@@ -69,9 +76,11 @@ if jobId then
       rcall("LREM", KEYS[2], 1, jobId)
       return
     else
-      if jobCounter == 1 then
-        rcall("PEXPIRE", rateLimiterKey, ARGV[7])
-      end
+      -- if jobCounter == 1 then
+      --   rcall("PEXPIRE", rateLimiterKey, ARGV[7])
+      -- end
+      
+      -- rcall("DECR", KEYS[9] .. "_throttle")
     end
   end
 
@@ -89,3 +98,11 @@ if jobId then
 else
   rcall("PUBLISH", KEYS[8], "")
 end
+
+
+-- What to modify: 
+-- Instead of rate limiter key, use throttle ID instead 
+-- Verfiy can retrive the same redis instance that saved throttleID 
+-- Modify throttle limit to be a key that also holds a muli-var semaphore with max counter being # of throttle
+-- If counter==0, move key to delayed 
+-- When a job finishes, update the semaphore and add one back to counter 

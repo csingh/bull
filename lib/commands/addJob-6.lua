@@ -21,6 +21,7 @@
       KEYS[4] 'id'
       KEYS[5] 'delayed'
       KEYS[6] 'priority'
+      KEYS[7] 'throttleId'
 
       ARGV[1]  key prefix,
       ARGV[2]  custom id (will not generate one automatically)
