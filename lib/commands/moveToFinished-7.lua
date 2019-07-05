@@ -12,7 +12,9 @@
       KEYS[4] wait key
       KEYS[5] priority key
       KEYS[6] active event key
+      KEYS[7] throttleID
 
+    
       ARGV[1]  jobId
       ARGV[2]  timestamp
       ARGV[3]  msg property
@@ -53,6 +55,7 @@ if rcall("EXISTS", KEYS[3]) == 1 then -- // Make sure job exists
     rcall("ZADD", KEYS[2], ARGV[2], ARGV[1])
     rcall("HMSET", KEYS[3], ARGV[3], ARGV[4], "finishedOn", ARGV[2]) -- "returnvalue" / "failedReason" and "finishedOn"
 
+    rcall("INCR",KEYS[7])
     -- Remove old jobs?
     if removeJobs and removeJobs > 1 then
       local start = removeJobs - 1

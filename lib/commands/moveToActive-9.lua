@@ -50,23 +50,27 @@ end
 if jobId then
   -- Check if we need to perform rate limiting.
   -- local maxJobs = tonumber(ARGV[6])
-  -- local maxJobs = tonumber(rcall("GET"), KEYS[9])
+
+  local blab = KEYS[9]
+  local maxJobs = tonumber(rcall("GET", blab))
 
   if(maxJobs) then
     local rateLimiterKey = KEYS[6];
-    -- -- local jobCounter = tonumber(rcall("GET", rateLimiterKey))
+    -- local jobCounter = tonumber(rcall("GET", rateLimiterKey))
 
+    local lol = KEYS[9] .. "_throttle"
 
-    -- local jobCounter = tonumber(rcall("INCR", KEYS[9] .. "_throttle"))
+    local jobCounter = tonumber(rcall("GET", lol))
     local bounceBack = ARGV[8]
     
     -- check if rate limit hit
-    if jobCounter > maxJobs then
+    -- technically shouldn't be less than 0 lol
+    if maxJobs <= 0 then
       if bounceBack == 'false' then
 
-        -- local exceedingJobs = jobCounter - maxJobs
-        -- local delay = tonumber(rcall("PTTL", rateLimiterKey)) + ((exceedingJobs - 1) * ARGV[7]) / maxJobs
-        -- local timestamp = delay + tonumber(ARGV[4])
+        local exceedingJobs = jobCounter - maxJobs
+        local delay = tonumber(rcall("PTTL", rateLimiterKey)) + ((exceedingJobs - 1) * ARGV[7]) / maxJobs
+        local timestamp = delay + tonumber(ARGV[4])
         
         -- put job into delayed queue
         rcall("ZADD", KEYS[7], timestamp * 0x1000 + bit.band(jobCounter, 0xfff), jobId)
@@ -79,8 +83,7 @@ if jobId then
       -- if jobCounter == 1 then
       --   rcall("PEXPIRE", rateLimiterKey, ARGV[7])
       -- end
-      
-      -- rcall("DECR", KEYS[9] .. "_throttle")
+        rcall("DECR", lol)
     end
   end
 
